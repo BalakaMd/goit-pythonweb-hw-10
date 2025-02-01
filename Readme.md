@@ -2,23 +2,22 @@
 
 This is a REST API for managing contacts, built using FastAPI and SQLAlchemy.
 
-## Features
+## Key Features
 
-- Create new contacts
-- Retrieve a list of all contacts
-- Get a contact by ID
-- Update existing contacts
-- Delete contacts
-- Search contacts by name, surname, or email
-- Get a list of contacts with birthdays in the next 7 days
+- User registration and authentication
+- Create, read, update, and delete contacts
+- Search contacts by first name, last name, or email
+- Retrieve a list of contacts with upcoming birthdays
+
 
 ## Technologies
 
 - FastAPI
 - SQLAlchemy
 - PostgreSQL
-- Pydantic
-
+- Docker
+- Alembic (for database migrations)
+- 
 ## Installation and Setup
 
 1. Clone the repository:
@@ -39,6 +38,10 @@ pip install -r requirements.txt
  ```bash
 uvicorn main:app --reload
  ```
+6. or Launch the application using Docker Compose:
+ ```bash
+docker-compose up --build
+ ```
 
 The API will be available at `http://localhost:8000`.
 
@@ -50,6 +53,6 @@ After running the application, Swagger documentation will be available at:
 ## Project Structure
 
 - `main.py`: Main application file with API route definitions
-- `models.py`: SQLAlchemy model definitions
-- `schemas.py`: Pydantic models for data validation
-- `database.py`: Database connection settings
+- `app/models/models.py`: SQLAlchemy model definitions
+- `app/schemas/schemas.py`: Pydantic models for data validation
+- `app/db/database.py`: Database connection settings

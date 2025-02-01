@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 from datetime import date
 from typing import Optional
 
@@ -15,3 +15,13 @@ class ContactCreate(ContactBase):
 
 class Contact(ContactBase):
     id: int
+    owner_id: int
+
+
+class UserCreate(BaseModel):
+    email: EmailStr
+    password: str
+
+class User(BaseModel):
+    id: int
+    email: EmailStr

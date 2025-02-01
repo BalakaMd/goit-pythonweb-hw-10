@@ -1,70 +1,37 @@
-from fastapi import FastAPI, Depends, HTTPException
-from sqlalchemy.orm import Session
-from typing import List
-from datetime import date, timedelta
-from schemas import ContactCreate, Contact
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
-import models
-from database import engine, get_db
+from app.api.endpoints import contacts, users
+from app.core.config import settings
+from app.core.rate_limiter import setup_rate_limiter
+from app.db.database import engine
+from app.models import models
 
 models.Base.metadata.create_all(bind=engine)
 
-app = FastAPI()
+app = FastAPI(title=settings.PROJECT_NAME)
 
-@app.post("/contacts/", response_model=Contact)
-def create_contact(contact: ContactCreate, db: Session = Depends(get_db)):
-    db_contact = models.Contact(**contact.model_dump())
-    db.add(db_contact)
-    db.commit()
-    db.refresh(db_contact)
-    return db_contact
+# Config CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.ALLOWED_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-@app.get("/contacts/", response_model=List[Contact])
-def read_contacts(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    contacts = db.query(models.Contact).offset(skip).limit(limit).all()
-    return contacts
+# config routers
+app.include_router(contacts.router, prefix="/contacts", tags=["contacts"])
+app.include_router(users.router, prefix="/users", tags=["users"])
 
-@app.get("/contacts/{contact_id}", response_model=Contact)
-def read_contact(contact_id: int, db: Session = Depends(get_db)):
-    contact = db.query(models.Contact).filter(models.Contact.id == contact_id).first()
-    if contact is None:
-        raise HTTPException(status_code=404, detail="Contact not found")
-    return contact
+@app.on_event("startup")
+async def startup():
+    await setup_rate_limiter(app)
 
-@app.put("/contacts/{contact_id}", response_model=Contact)
-def update_contact(contact_id: int, contact: ContactCreate, db: Session = Depends(get_db)):
-    db_contact = db.query(models.Contact).filter(models.Contact.id == contact_id).first()
-    if db_contact is None:
-        raise HTTPException(status_code=404, detail="Contact not found")
-    for key, value in contact.model_dump().items():
-        setattr(db_contact, key, value)
-    db.commit()
-    db.refresh(db_contact)
-    return db_contact
+@app.get("/")
+async def root():
+    return {"message": "Welcome to the Contact Book API"}
 
-@app.delete("/contacts/{contact_id}", response_model=Contact)
-def delete_contact(contact_id: int, db: Session = Depends(get_db)):
-    contact = db.query(models.Contact).filter(models.Contact.id == contact_id).first()
-    if contact is None:
-        raise HTTPException(status_code=404, detail="Contact not found")
-    db.delete(contact)
-    db.commit()
-    return contact
-
-@app.get("/contacts/search/", response_model=List[Contact])
-def search_contacts(query: str, db: Session = Depends(get_db)):
-    contacts = db.query(models.Contact).filter(
-        (models.Contact.first_name.ilike(f"%{query}%")) |
-        (models.Contact.last_name.ilike(f"%{query}%")) |
-        (models.Contact.email.ilike(f"%{query}%"))
-    ).all()
-    return contacts
-
-@app.get("/contacts/birthdays/", response_model=List[Contact])
-def upcoming_birthdays(db: Session = Depends(get_db)):
-    today = date.today()
-    next_week = today + timedelta(days=7)
-    contacts = db.query(models.Contact).filter(
-        (models.Contact.birthday >= today) & (models.Contact.birthday <= next_week)
-    ).all()
-    return contacts
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
